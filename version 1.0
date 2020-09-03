@@ -1,0 +1,224 @@
+###Libraries
+import pygame
+import random
+import time
+import math
+
+###Constant variables
+#screen
+(WIDTH, HEIGHT) = (800, 500) #bepaald de grote van het scherm (pixels)
+BACKROUND = (0, 0, 150) #achtergrond kleur is blauw
+
+#colours
+WHITE = (255, 255, 255)
+RED = (220, 0, 0)
+YELLOW = (255, 190, 0)
+GREEN = (0, 220, 0)
+
+#Fonts
+pygame.init() #Nodig voor font, anders error
+font = pygame.font.SysFont("Arial", 30, True, False)
+font2 = pygame.font.SysFont("Arial", 40, True, False)
+GAME_OVER = pygame.font.SysFont("Times new Roman", 60, True, False)
+SCORE_ARIAL = pygame.font.SysFont("Arial", 20, True, False)
+
+#bubble
+MIN_BUB_RADIUS = 10 #Uiterste waarden grote bellen (in pixels)
+MAX_BUB_RADIUS = 30 
+MIN_BUB_SPEED = 100 #Uiterste waarden snelheid bellen (pixel per sec)
+MAX_BUB_SPEED = 900
+GAP = 100 #de creatie van de bellen moet een stukje buiten scherm gebeuren
+BUB_CHANCE = 0.09 #elke seconde gemiddeld 10 bellen
+
+SPEED_POWERUP_CHANCE = 140 #als bel, kans 1 / 100 op powerup
+SPEED_POWERUP_MODIFIER = 160 #amount of extra pixels per sec speed
+SPEED_DECREASE = 14 #pixel / sec snelheid afname per sec
+
+#player
+PLAYER_RADIUS = 15 #Start grote (pixels) (keer 2)
+PLAYER_SPEED = 300 #Start snelheid (pixels per sec) 
+CENTER_X = WIDTH // 2 #x en y positie midden van scherm
+CENTER_Y = HEIGHT // 2 
+SPEED_SCORE_MODIFIER = 100 #Snelheid is pixels per sec, dus een modifier voor juiste score verhouding
+BALANCE_SCORE_MODIFIER = 50 #max score - myscore / B_S_M
+
+#timer
+GAME_DURATION = 60 #duur van het spel in s
+
+###Global list and variables
+#time 
+Global_cycle_timer = 0.01 #Houd bij hoe lang elke cycle van de main loop duurt
+Cycle_time_start = 0 #Houd het begin tijdstip van de cycle bij
+Endtime = 0 #tijd in s
+
+#Object storage
+Bubble_list = list() #Deze list bevat alle objects van class Bubble
+Player_list = list() #Bevat object spelers, waarschijnlijk 2
+
+###Classes en functions
+def timer(): #zorgt voor de display van time
+  Game_time = int(Endtime - time.time())
+ #Make the number go flashy
+  if Game_time < 5:
+    if Game_time % 2 == 1:
+      text = font.render(str(Game_time), 1, (255, 255, 255))
+      screen.blit(text, (CENTER_X, 10))
+    else:
+      text = font2.render(str(Game_time), 1, (255, 0, 0))
+      screen.blit(text, (CENTER_X, 10)) 
+  else:
+    text = font.render(str(Game_time), 1, (255, 255, 255))
+    screen.blit(text, (CENTER_X, 10))   
+  
+def create_bubble():
+  if random.randint(0, int(BUB_CHANCE/Global_cycle_timer)) == 0: #maakt kans afhankelijk van de verstreken tijd
+    if random.randint(0, SPEED_POWERUP_CHANCE) == 0:
+      Bubble_list.append(Bubble(True))  
+    else:  
+      Bubble_list.append(Bubble(False))
+
+def opperate_all_bubbles():
+  for i in range(len(Bubble_list)):
+    Bubble_list[i].move_bubble()
+    Bubble_list[i].draw_bubble()
+
+  for i in range(len(Bubble_list)-1, -1, -1): #loops achteruit om errors te voorkomen  
+    if Bubble_list[i].x_cord < -GAP: 
+      del Bubble_list[i]
+
+def opperate_all_players():
+  for i in range(len(Player_list)):
+    Player_list[i].move_player()
+    Player_list[i].draw_player()
+    Player_list[i].collision_and_score()
+    Player_list[i].blit_score()
+
+def sort_player_score():
+  #sorteerd objecten op basis van score, hoog --> laag
+  Player_list.sort(key=lambda x: x.score, reverse=True)
+
+      
+class Bubble():
+  def __init__(self, is_speed_powerup):
+    self.x_cord = WIDTH + GAP #x cord licht een stukje buiten scherm
+    self.y_cord = random.randint(0, HEIGHT) #y cord is random hoogte in scherm
+    self.radius = random.randint(MIN_BUB_RADIUS, MAX_BUB_RADIUS) #random groote bel
+    self.speed = random.randint(MIN_BUB_SPEED, MAX_BUB_SPEED) #random snelheid
+    self.speed_powerup = is_speed_powerup
+
+  def move_bubble(self):
+    self.x_cord = self.x_cord - (self.speed * Global_cycle_timer)
+    #beweegt bel naar links afhankelijk van de tijd die er is verstreken in vergelijking met de vorige keer dat de bel is bewogen
+
+  def draw_bubble(self):
+    if self.speed_powerup:
+      pygame.draw.circle(screen, GREEN, (int(self.x_cord),int(self.y_cord)), self.radius, 0)
+    else:
+      pygame.draw.circle(screen, WHITE, (int(self.x_cord),int(self.y_cord)), self.radius, 1) 
+
+class Player():
+  def __init__(self, colour, up, down, left, right, score_x, score_y):
+    self.x_cord = CENTER_X
+    self.y_cord = CENTER_Y
+    self.radius = PLAYER_RADIUS
+    self.speed = PLAYER_SPEED
+    self.colour = colour
+    self.key_up = up
+    self.key_down = down
+    self.key_left = left
+    self.key_right = right
+    self.score_x = score_x #x en y cord van de tekst die geblit word 
+    self.score_y = score_y
+    self.score = 0
+  
+  def move_player(self):
+    pygame.event.pump() #Nodig, anders is input player verneukt
+    keys = pygame.key.get_pressed() #Neemd een list van alle keys
+    if keys[self.key_up]: #Checkt of gegeven key in list ingedrukt is
+      self.y_cord = self.y_cord - (self.speed * Global_cycle_timer) #beweegt speler afhankelijk van tijd
+    if keys[self.key_down]:
+      self.y_cord = self.y_cord + (self.speed * Global_cycle_timer)
+    if keys[self.key_left]:
+      self.x_cord = self.x_cord - (self.speed * Global_cycle_timer)
+    if keys[self.key_right]:
+      self.x_cord = self.x_cord + (self.speed * Global_cycle_timer)
+    #Border
+    if self.x_cord < 0:
+      self.x_cord = 0
+    elif self.x_cord > WIDTH:
+      self.x_cord = WIDTH
+    #Bottom and top connected
+    if self.y_cord < 0:
+      self.y_cord = HEIGHT
+    elif self.y_cord > HEIGHT:
+      self.y_cord = 0
+    #Speed decrease 
+    if self.speed > PLAYER_SPEED:
+      self.speed = self.speed - SPEED_DECREASE * Global_cycle_timer
+    else:
+      self.speed = PLAYER_SPEED
+
+  def draw_player(self):
+    pygame.draw.circle(screen, self.colour, (int(self.x_cord), int(self.y_cord)), self.radius, 1) #tekent gekleurde cirkel rond driehoek
+    #3 variabelen zijn de punten van de driehoek, links is grofweg 2/3 radius
+    top_left = (self.x_cord - (2 * (self.radius)) / 3, self.y_cord - (2 * (self.radius)) / 3)
+    bottom_left = (self.x_cord - (2 * (self.radius)) / 3, self.y_cord + (2 * (self.radius)) / 3)
+    mid_right = (self.x_cord + self.radius, self.y_cord)
+    pygame.draw.polygon(screen, self.colour,(top_left, bottom_left, mid_right))
+
+  def collision_and_score(self):
+    for i in range(len(Bubble_list) -1, -1, -1): #loopt achterwaarts door list anders index error
+      distance = math.sqrt((Bubble_list[i].x_cord - self.x_cord)**2 + (Bubble_list[i].y_cord - self.y_cord)**2) #Stelling pythagoras om afstand tussen bel en player te krijgen
+      if distance < (Bubble_list[i].radius + self.radius):
+        sort_player_score()
+        top_score = Player_list[0].score
+        self.score = self.score + (Bubble_list[i].radius + int(Bubble_list[i].speed / SPEED_SCORE_MODIFIER)) + int((top_score - self.score) / BALANCE_SCORE_MODIFIER)
+        
+        if Bubble_list[i].speed_powerup: #Als speed powerup
+          self.speed = self.speed + SPEED_POWERUP_MODIFIER
+
+        del Bubble_list[i]
+  
+  def blit_score(self): 
+    score_text = SCORE_ARIAL.render("Score ", False, self.colour)   
+    score_num_text = SCORE_ARIAL.render(str(self.score), False, WHITE)
+    
+    #Bepaald zo de lengte van de text, rect is (x1, y1, x2, y2) neem de 3de waarde
+    x_length_score_text = score_text.get_rect()[2] 
+    x_length_score_num_text = score_num_text.get_rect()[2]
+
+    #Blit wordt zo gedaan dat text score_x pixels heeft tenopzichte zijkant scherm
+    if self.score_x < CENTER_X:
+      screen.blit(score_text, (self.score_x, self.score_y))
+      screen.blit(score_num_text, (self.score_x + x_length_score_text, self.score_y))
+    else:
+      screen.blit(score_text, (self.score_x - x_length_score_text - x_length_score_num_text, self.score_y))
+      screen.blit(score_num_text, (self.score_x - x_length_score_num_text, self.score_y))
+
+###Setup code    
+screen = pygame.display.set_mode((WIDTH, HEIGHT)) #Creër het scherm
+screen.fill(BACKROUND)
+Endtime = time.time() + GAME_DURATION
+
+Player_list.append(Player(RED, pygame.K_w, pygame.K_s, pygame.K_a, pygame.K_d, 10, 10)) #test
+Player_list.append(Player(YELLOW, pygame.K_UP, pygame.K_DOWN, pygame.K_LEFT, pygame.K_RIGHT, WIDTH - 10, 10)) #test
+
+###Main Program
+while time.time() < Endtime:
+  Cycle_time_start = time.time() #Houd nu begintijd cycle bij
+  screen.fill(BACKROUND) #Clear screen, objecten bewegen betekent alles opnieuw tekenen
+  
+  create_bubble()
+  opperate_all_bubbles()
+  opperate_all_players()
+  timer()
+
+  pygame.display.flip() #Update pygame window
+  time.sleep(0.01) #Bepaald aantal frames per seconde
+  Global_cycle_timer = time.time() - Cycle_time_start #Update cycle time van loop
+
+Game_over = GAME_OVER.render("GAME OVER", 1, (255, 0, 0))
+Game_over_rect = Game_over.get_rect() #Neemd vierkant van text
+Game_over_rect.center = (CENTER_X, CENTER_Y) #Bepaald centrum, en daarmee buitenste hoeken
+screen.blit(Game_over, Game_over_rect) #Plaasts text in hoek van vierkant
+pygame.display.flip()
