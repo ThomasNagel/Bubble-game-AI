@@ -228,7 +228,6 @@ Player_list.append(Player(YELLOW, pygame.K_UP, pygame.K_DOWN, pygame.K_LEFT, pyg
 
 ###Main Program
 while time.time() < Endtime:
-
   Cycle_time_start = time.time() #Houd nu begintijd cycle bij
   
   create_bubble()
@@ -240,8 +239,9 @@ while time.time() < Endtime:
   if keys[pygame.K_ESCAPE]:
     pygame.quit()
     exit()
-
-  time.sleep(0.0001) #Bepaald aantal frames per seconde
+  
+  pygame.display.flip()
+  time.sleep(0.0001) 
   Global_cycle_timer = time.time() - Cycle_time_start #Update cycle time van loop
 
 ###Endscreen
