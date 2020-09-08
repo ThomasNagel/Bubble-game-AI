@@ -230,7 +230,6 @@ Player_list.append(Player(YELLOW, pygame.K_UP, pygame.K_DOWN, pygame.K_LEFT, pyg
 while time.time() < Endtime:
 
   Cycle_time_start = time.time() #Houd nu begintijd cycle bij
-  screen.fill(BACKROUND) #Clear screen, objecten bewegen betekent alles opnieuw tekenen
   
   create_bubble()
   move_all()
